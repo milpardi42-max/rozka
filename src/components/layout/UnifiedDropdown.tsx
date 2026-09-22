@@ -5,7 +5,6 @@ import Link from "next/link";
 import { ArrowUpRight, ChevronLeft, ChevronRight, ShoppingBag, Layers } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useLocale } from "@/components/providers/AppProviders";
-import { Badge, Sku } from "@/components/ui/Badge";
 import { AddToCartButton } from "@/components/product/Actions";
 import { ColorSwatches } from "@/components/product/ColorSwatches";
 import { cn, formatPrice, href, t } from "@/lib/utils";
@@ -172,115 +171,57 @@ export function UnifiedDropdown({ nav, onNavigate }: { nav: NavData; onNavigate:
 
         {/* ── STORE panel ─────────────────────────────────────────────────── */}
         {tab === "store" && (
-          <div>
-            <div className="mb-5 flex items-center justify-between">
+          <div className="grid gap-8 lg:grid-cols-[240px_1fr]">
+            <aside className="flex flex-col justify-between border-e border-border pe-7">
               <div>
-                <p className="text-label text-accent">{dict.common.siteExclusive}</p>
-                <h3 className="mt-1 font-display text-h3">{dict.nav.products}</h3>
+                <span className="inline-flex items-center gap-2 text-label text-accent">
+                  <ShoppingBag className="h-3.5 w-3.5" />
+                  {fa ? "رزی آتلیه" : "ROZI ATELIER"}
+                </span>
+                <h3 className="mt-4 max-w-[12rem] font-display text-[32px] leading-[0.95] text-foreground">
+                  {fa ? "برای فضاهای با سلیقه" : "Objects for considered spaces"}
+                </h3>
+                <p className="mt-4 text-sm leading-relaxed text-foreground-secondary">
+                  {fa ? "انتخابی کوتاه از محصولات اصیل آتلیه؛ از سطح تا جزئیات دکور." : "A concise edit of atelier-made pieces, from surface to the finishing detail."}
+                </p>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-caption text-muted tabular">{page + 1} / {pages}</span>
-                <button
-                  type="button"
-                  aria-label="previous"
-                  disabled={page === 0}
-                  onClick={() => setPage((p) => Math.max(0, p - 1))}
-                  className="flex h-9 w-9 items-center justify-center rounded-full border border-border transition-colors hover:border-foreground disabled:opacity-30"
-                >
-                  <ChevronLeft className="h-4 w-4 rtl-flip" />
-                </button>
-                <button
-                  type="button"
-                  aria-label="next"
-                  disabled={page >= pages - 1}
-                  onClick={() => setPage((p) => Math.min(pages - 1, p + 1))}
-                  className="flex h-9 w-9 items-center justify-center rounded-full border border-border transition-colors hover:border-foreground disabled:opacity-30"
-                >
-                  <ChevronRight className="h-4 w-4 rtl-flip" />
-                </button>
-                <Link
-                  href={href(locale, "/discover?tab=shop")}
-                  onClick={onNavigate}
-                  className="ms-2 hidden items-center gap-1 text-sm font-medium text-foreground hover:text-accent sm:inline-flex"
-                >
-                  {dict.nav.viewAll}
+              <div className="mt-8 flex items-center justify-between gap-3">
+                <Link href={href(locale, "/shop")} onClick={onNavigate} className="inline-flex items-center gap-2 text-sm font-semibold text-foreground transition-colors hover:text-accent">
+                  {fa ? "ورود به فروشگاه" : "Enter the store"}
                   <ArrowUpRight className="h-4 w-4 rtl-flip" />
                 </Link>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-caption text-muted tabular">{String(page + 1).padStart(2, "0")} / {String(pages).padStart(2, "0")}</span>
+                  <button type="button" aria-label={fa ? "محصولات قبلی" : "Previous products"} disabled={page === 0} onClick={() => setPage((p) => Math.max(0, p - 1))} className="flex h-8 w-8 items-center justify-center rounded-full border border-border transition-colors hover:border-foreground disabled:opacity-30">
+                    <ChevronLeft className="h-3.5 w-3.5 rtl-flip" />
+                  </button>
+                  <button type="button" aria-label={fa ? "محصولات بعدی" : "Next products"} disabled={page >= pages - 1} onClick={() => setPage((p) => Math.min(pages - 1, p + 1))} className="flex h-8 w-8 items-center justify-center rounded-full border border-border transition-colors hover:border-foreground disabled:opacity-30">
+                    <ChevronRight className="h-3.5 w-3.5 rtl-flip" />
+                  </button>
+                </div>
               </div>
-            </div>
+            </aside>
 
-            <ul key={page} className="grid grid-cols-3 gap-4">
+            <ul key={page} className="grid gap-4 sm:grid-cols-3">
               {visible.map((p, i) => {
                 const colorId = colorSel[p.slug] ?? p.colors[0]?.id;
                 const color = p.colors.find((c) => c.id === colorId) ?? p.colors[0];
                 const url = href(locale, `/shop/${p.slug}`);
                 return (
-                  <li
-                    key={p.slug}
-                    className="anim-fade-up rounded-lg border border-border bg-surface p-3 transition-shadow hover:shadow-medium"
-                    style={{ animationDelay: `${i * 50}ms` }}
-                  >
-                    <div className="flex gap-3">
-                      <Link href={url} onClick={onNavigate} className="relative h-28 w-24 shrink-0 overflow-hidden rounded-md bg-background-secondary">
-                        <Image
-                          key={color.image}
-                          src={color.image}
-                          alt={`${t(p.title, locale)} — ${t(color.name, locale)}`}
-                          fill
-                          sizes="96px"
-                          className="object-cover anim-scale-fade"
-                        />
-                      </Link>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-start justify-between gap-2">
-                          <Link href={url} onClick={onNavigate} className="line-clamp-2 text-sm font-medium text-foreground hover:text-accent">
-                            {t(p.title, locale)}
-                          </Link>
-                          <span className="shrink-0 text-sm font-semibold tabular">{formatPrice(p.price, locale)}</span>
-                        </div>
-                        <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                          <Sku value={p.sku} />
-                          {p.siteOwned
-                            ? <Badge tone="accent">{dict.common.siteExclusive}</Badge>
-                            : <Badge tone="blue">{dict.common.artistProduct}</Badge>
-                          }
-                        </div>
-                        <dl className="mt-2 grid grid-cols-2 gap-x-2 gap-y-0.5">
-                          {p.specs.slice(0, 2).map((s) => (
-                            <div key={t(s.label, "en")} className="flex gap-1 text-[11px] leading-snug">
-                              <dt className="text-muted">{t(s.label, locale)}:</dt>
-                              <dd className="truncate text-foreground-secondary">{t(s.value, locale)}</dd>
-                            </div>
-                          ))}
-                        </dl>
+                  <li key={p.slug} className="anim-fade-up group min-w-0" style={{ animationDelay: `${i * 50}ms` }}>
+                    <Link href={url} onClick={onNavigate} className="relative block aspect-[1.1] overflow-hidden rounded-lg bg-background-secondary">
+                      <Image key={color.image} src={color.image} alt={`${t(p.title, locale)} — ${t(color.name, locale)}`} fill sizes="260px" className="object-cover transition-transform duration-700 group-hover:scale-105" />
+                      <span className="absolute inset-x-0 bottom-0 flex items-end justify-between bg-gradient-to-t from-black/65 to-transparent p-3 pt-10 text-white">
+                        <span className="min-w-0"><span className="block text-[10px] uppercase tracking-[0.16em] text-white/60">{p.sku}</span><span className="mt-1 block truncate text-sm font-semibold">{t(p.title, locale)}</span></span>
+                        <ArrowUpRight className="h-4 w-4 shrink-0 rtl-flip opacity-0 transition-opacity group-hover:opacity-100" />
+                      </span>
+                    </Link>
+                    <div className="mt-3 flex items-center justify-between gap-2">
+                      <span className="text-sm font-semibold tabular">{formatPrice(p.price, locale)}</span>
+                      <div className="flex items-center gap-2">
+                        <ColorSwatches size="sm" label={dict.common.color} options={p.colors.map((c) => ({ id: c.id, name: t(c.name, locale), hex: c.hex, stock: c.stock }))} value={colorId} onChange={(id) => setColorSel((s) => ({ ...s, [p.slug]: id }))} />
+                        <AddToCartButton variant="icon" disabled={color.stock <= 0} line={{ kind: "product", id: p.id, sku: p.sku, title: t(p.title, locale), image: color.image, price: p.price, colorName: t(color.name, locale), colorHex: color.hex, href: url }} />
                       </div>
-                    </div>
-                    <div className="mt-3 flex items-center justify-between gap-2 border-t border-border pt-3">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <ColorSwatches
-                          size="sm"
-                          label={dict.common.color}
-                          options={p.colors.map((c) => ({ id: c.id, name: t(c.name, locale), hex: c.hex, stock: c.stock }))}
-                          value={colorId}
-                          onChange={(id) => setColorSel((s) => ({ ...s, [p.slug]: id }))}
-                        />
-                        <span className="truncate text-caption text-foreground-secondary">{t(color.name, locale)}</span>
-                      </div>
-                      <AddToCartButton
-                        variant="icon"
-                        disabled={color.stock <= 0}
-                        line={{
-                          kind: "product",
-                          id: p.id,
-                          sku: p.sku,
-                          title: t(p.title, locale),
-                          image: color.image,
-                          price: p.price,
-                          colorName: t(color.name, locale),
-                          colorHex: color.hex,
-                          href: url,
-                        }}
-                      />
                     </div>
                   </li>
                 );

@@ -36,27 +36,35 @@ export function ShopHero({ locale, images, featuredProduct, categories, stats }:
   /* ── Slideshow + progress ── */
   useEffect(() => {
     if (bgImages.length < 2) return;
+
+    const start = performance.now();
+    const tick = (now: number) => {
+      setProgress(Math.min((now - progressRef.current!.start) / SLIDE_INTERVAL, 1));
+      progressRef.current!.raf = requestAnimationFrame(tick);
+    };
+    const restartProgress = () => {
+      progressRef.current!.start = performance.now();
+      setProgress(0);
+    };
     const advance = () => {
       setActive((a) => (a + 1) % bgImages.length);
-      setProgress(0);
-      startProgress();
+      restartProgress();
     };
-    const startProgress = () => {
-      const start = performance.now();
-      const tick = (now: number) => {
-        setProgress((now - start) / SLIDE_INTERVAL);
-        progressRef.current!.raf = requestAnimationFrame(tick);
-      };
-      progressRef.current = { start, raf: requestAnimationFrame(tick) };
-    };
-    startProgress();
+
+    progressRef.current = { start, raf: requestAnimationFrame(tick) };
     const id = window.setInterval(advance, SLIDE_INTERVAL);
     return () => {
       window.clearInterval(id);
       if (progressRef.current) cancelAnimationFrame(progressRef.current.raf);
+      progressRef.current = null;
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bgImages.length]);
+
+  const selectSlide = (index: number) => {
+    setActive(index);
+    setProgress(0);
+    if (progressRef.current) progressRef.current.start = performance.now();
+  };
 
   /* collage frames */
   const imgA = images[0];
@@ -97,18 +105,34 @@ export function ShopHero({ locale, images, featuredProduct, categories, stats }:
         <div className="absolute inset-0 [box-shadow:inset_0_0_140px_40px_rgba(4,5,10,0.3)]" />
       </div>
 
+      {/* ── Editorial details ─────────────────────────────────────────────── */}
+      <div aria-hidden className="pointer-events-none absolute inset-0 z-[1] hidden lg:block">
+        <div className="absolute end-[7%] top-1/2 h-52 -translate-y-1/2 border-s border-white/15 ps-4">
+          <span className="[writing-mode:vertical-rl] text-[10px] uppercase tracking-[0.32em] text-white/35">
+            ROZI ATELIER · SURFACE / OBJECT / SPACE
+          </span>
+        </div>
+        <p className="absolute end-8 top-[calc(var(--announce-h,0px)+var(--header-h)+2rem)] text-[10px] uppercase tracking-[0.28em] text-white/40">
+          {fa ? "انتخاب آتلیه · ۱۴۰۵" : "ATELIER EDIT · 2026"}
+        </p>
+      </div>
+
       {/* ── Slide indicator dots ──────────────────────────────────────────── */}
       {bgImages.length > 1 && (
         <div
-          aria-hidden
-          className="absolute bottom-[5rem] inset-x-0 flex justify-center gap-1.5 z-10"
+          className="absolute bottom-[5rem] inset-x-0 z-10 flex justify-center gap-1.5"
+          aria-label={fa ? "انتخاب تصویر محصول" : "Choose product image"}
+          role="tablist"
         >
           {bgImages.map((_, i) => (
             <button
               key={i}
               type="button"
-              onClick={() => { setActive(i); setProgress(0); }}
-              className="relative h-[3px] overflow-hidden rounded-full bg-white/20 transition-all duration-300"
+              role="tab"
+              aria-selected={i === active}
+              aria-label={fa ? `تصویر ${i + 1} از ${bgImages.length}` : `Image ${i + 1} of ${bgImages.length}`}
+              onClick={() => selectSlide(i)}
+              className="relative h-[3px] overflow-hidden rounded-full bg-white/20 transition-all duration-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white"
               style={{ width: i === active ? "30px" : "8px" }}
             >
               <span
@@ -187,6 +211,37 @@ export function ShopHero({ locale, images, featuredProduct, categories, stats }:
                 {fa ? "مشاهده الگوها" : "Browse patterns"}
               </Link>
             </div>
+
+            {/* A compact version of the featured product keeps the hero useful on phones,
+                where the larger collage is intentionally hidden. */}
+            {featuredProduct && (
+              <Link
+                href={href(locale, `/shop/${featuredProduct.slug}`)}
+                className="anim-fade-up mt-7 flex max-w-sm items-center gap-3 rounded-xl border border-white/15 bg-white/8 p-2.5 backdrop-blur-md transition-colors hover:bg-white/12 lg:hidden"
+                style={{ animationDelay: "540ms" }}
+              >
+                <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-white/10">
+                  {featuredProduct.colors[0]?.image && (
+                    <Image
+                      src={featuredProduct.colors[0].image}
+                      alt=""
+                      fill
+                      sizes="56px"
+                      className="object-cover"
+                    />
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[10px] uppercase tracking-[0.18em] text-white/45">
+                    {fa ? "محصول منتخب" : "Featured product"}
+                  </p>
+                  <p className="mt-1 truncate text-sm font-semibold text-white">
+                    {t(featuredProduct.title, locale)}
+                  </p>
+                </div>
+                <ArrowUpRight className="me-1 h-4 w-4 shrink-0 rtl-flip" />
+              </Link>
+            )}
 
             {/* stats */}
             <dl
