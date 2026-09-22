@@ -66,25 +66,28 @@ function ProgressDots({
 
 export function Hero({ hero, patterns, stats, categories }: Props) {
   const { locale, dict } = useLocale();
+  const heroRef = useRef<HTMLElement>(null);
   const mediaRef = useRef<HTMLDivElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState(0);
+  const activeRef = useRef(0);
+  const wheelLockRef = useRef(false);
   const [progress, setProgress] = useState(0);
 
   /* resolve feature flags — default to enabled if not set */
   const parallaxOn = hero.parallaxEnabled !== false;
   const interactiveOn = hero.interactiveEnabled !== false;
 
-  /* bg images: use hero.images if ≥2, otherwise null (fallback to single image / timer) */
+  /* bg images: use hero.images if ≥2, otherwise the pattern images drive the preview */
   const bgImages = hero.images && hero.images.length > 1 ? hero.images : null;
-  const count = bgImages ? bgImages.length : patterns.length;
+  const slideCount = bgImages ? bgImages.length : patterns.length;
 
   /* ── slider mode: force timer even when bgImages exist ── */
   const forceSlider = hero.sliderMode === true;
 
-  /* ── timer-driven mode (no bgImages, OR sliderMode forced) ── */
+  /* ── timer-driven mode when scroll interaction is disabled ── */
   useEffect(() => {
-    const useTimer = !bgImages || forceSlider;
+    const useTimer = !interactiveOn && (!bgImages || forceSlider);
     if (!useTimer) return;
     const slideCount = bgImages ? bgImages.length : patterns.length;
     if (slideCount < 2) return;
@@ -102,8 +105,48 @@ export function Hero({ hero, patterns, stats, categories }: Props) {
       cancelAnimationFrame(raf);
       window.clearInterval(id);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [patterns.length, forceSlider, bgImages]);
+  }, [patterns.length, forceSlider, bgImages, interactiveOn]);
+
+  /* ── one wheel gesture = one slide ──
+     The hero temporarily consumes the wheel event so the user can move
+     through all four image/preview pairs before the page continues. */
+  useEffect(() => {
+    if (!interactiveOn || slideCount < 2) return;
+
+    const onWheel = (event: WheelEvent) => {
+      const direction = event.deltaY > 0 ? 1 : event.deltaY < 0 ? -1 : 0;
+      if (!direction) return;
+
+      const currentIndex = activeRef.current;
+      const sectionTop = heroRef.current?.getBoundingClientRect().top ?? 0;
+
+      // Do not consume the return journey while the hero is still below the
+      // viewport. Let the browser bring the complete, viewport-sized hero back
+      // into view first; only then does one wheel gesture change one image.
+      const heroIsFullyInView = sectionTop >= -8 && sectionTop <= 8;
+      if (!heroIsFullyInView) return;
+
+      const nextIndex = currentIndex + direction;
+      const canChange = nextIndex >= 0 && nextIndex < slideCount;
+
+      // At the first/last image, release the wheel so the page can continue.
+      if (!canChange) return;
+      event.preventDefault();
+      if (wheelLockRef.current) return;
+      wheelLockRef.current = true;
+
+      activeRef.current = nextIndex;
+      setActive(nextIndex);
+      setProgress(0);
+      window.dispatchEvent(new CustomEvent("hero:header", { detail: { solid: nextIndex > 0 } }));
+      window.setTimeout(() => {
+        wheelLockRef.current = false;
+      }, 450);
+    };
+
+    window.addEventListener("wheel", onWheel, { passive: false });
+    return () => window.removeEventListener("wheel", onWheel);
+  }, [interactiveOn, slideCount]);
 
   /* ── parallax for timer mode (no bgImages or forceSlider) ── */
   useEffect(() => {
@@ -136,10 +179,16 @@ export function Hero({ hero, patterns, stats, categories }: Props) {
   const slideImages = bgImages ?? null;
   const safePatternCount = patterns.length || 1;
   const activeSlideIndex = active % (slideImages ? slideImages.length : safePatternCount);
+  const selectSlide = (index: number) => {
+    activeRef.current = index;
+    setActive(index);
+    setProgress(0);
+    window.dispatchEvent(new CustomEvent("hero:header", { detail: { solid: index > 0 } }));
+  };
 
   /* ── inner section (shared JSX) ── */
   const inner = (
-    <section className="relative isolate w-full overflow-hidden bg-[#0d1117] text-white h-[100svh] min-h-[640px] max-h-[1080px]">
+    <section ref={heroRef} className="relative isolate w-full overflow-hidden bg-[#0d1117] text-white h-[100svh] min-h-[640px] max-h-[1080px]">
       {/* media */}
       <div ref={mediaRef} className="absolute inset-0 will-change-transform scale-[1.06]">
         {hero.video ? (
@@ -233,7 +282,7 @@ export function Hero({ hero, patterns, stats, categories }: Props) {
                     active={active}
                     progress={progress}
                     locale={locale}
-                    onClick={interactiveOn ? setActive : undefined}
+                    onClick={interactiveOn ? selectSlide : undefined}
                   />
                 </div>
               </div>

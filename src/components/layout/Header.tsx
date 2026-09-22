@@ -21,12 +21,14 @@ export function Header({ nav }: { nav: NavData }) {
   const { user } = useAuth();
 
   const [scrolled, setScrolled] = useState(false);
+  const [heroSolid, setHeroSolid] = useState(false);
   const [panel, setPanel] = useState<Panel>(null);
   const [mobile, setMobile] = useState(false);
   const closeTimer = useRef<number | null>(null);
 
   const isHome = pathname === `/${locale}` || pathname === `/${locale}/`;
-  const transparent = isHome && !scrolled && panel === null && !mobile;
+  const heroGlass = isHome && heroSolid;
+  const transparent = isHome && !scrolled && !heroGlass && panel === null && !mobile;
 
   useEffect(() => {
     let ticking = false;
@@ -46,7 +48,19 @@ export function Header({ nav }: { nav: NavData }) {
   useEffect(() => {
     setPanel(null);
     setMobile(false);
-  }, [pathname]);
+    if (!isHome) setHeroSolid(false);
+  }, [pathname, isHome]);
+
+  // The home hero announces its discrete wheel states so the header can
+  // change immediately, even while the page itself remains pinned on the hero.
+  useEffect(() => {
+    const onHeroHeader = (event: Event) => {
+      const solid = (event as CustomEvent<{ solid?: boolean }>).detail?.solid === true;
+      setHeroSolid(solid);
+    };
+    window.addEventListener("hero:header", onHeroHeader);
+    return () => window.removeEventListener("hero:header", onHeroHeader);
+  }, []);
 
   const openPanel = useCallback((p: Panel) => {
     if (closeTimer.current) window.clearTimeout(closeTimer.current);
@@ -72,7 +86,7 @@ export function Header({ nav }: { nav: NavData }) {
       <header
         className={cn(
           "fixed inset-x-0 z-[70] transition-[background-color,border-color,box-shadow,backdrop-filter,top] duration-300",
-          transparent ? "border-b border-transparent bg-transparent" : "glass border-b border-border/70 shadow-[0_1px_0_0_var(--border)]",
+          heroGlass ? "border-b border-white/70 bg-white/70 shadow-[0_1px_0_0_rgba(15,23,42,0.08)] backdrop-blur-xl" : transparent ? "border-b border-transparent bg-transparent" : "glass border-b border-border/70 shadow-[0_1px_0_0_var(--border)]",
         )}
         style={{ top: "var(--announce-h, 0px)" }}
         onMouseLeave={scheduleClose}
